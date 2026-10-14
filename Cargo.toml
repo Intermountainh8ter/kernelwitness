@@ -1,0 +1,23 @@
+[package]
+name = "kernelwitness"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Deterministic GPU kernel benchmarks with hardware/driver fingerprinting so a published number is reproducible on a specific machine."
+repository = "https://github.com/Intermountainh8ter/kernelwitness"
+keywords = ["gpu", "benchmark", "reproducibility", "cuda", "rocm"]
+categories = ["command-line-utilities", "science"]
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+
+[[bin]]
+name = "kernelwitness"
+path = "src/main.rs"
+
+[lib]
+name = "kernelwitness"
+path = "src/lib.rs"
