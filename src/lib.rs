@@ -143,6 +143,95 @@ pub fn reproducibility(baseline: &Report, candidate: &Report) -> Reproducibility
     }
 }
 
+/// Pre-reg §2's ten canonical kernel ids. Any run tagged with a
+/// different id is explicitly out of the canonical suite -- a shape
+/// deviation ships as a new row, not a replacement.
+pub const CANONICAL_KERNELS: &[&str] = &[
+    "matmul-bf16",
+    "matmul-fp16",
+    "matmul-fp8",
+    "sdpa",
+    "rmsnorm",
+    "swiglu_mlp",
+    "fa_bwd",
+    "ln_bwd",
+    "emb_lookup",
+    "gemm_i8",
+];
+
+/// `true` iff `kernel` is one of the pre-reg §2 canonical ids.
+pub fn is_canonical_kernel(kernel: &str) -> bool {
+    CANONICAL_KERNELS.contains(&kernel)
+}
+
+/// One canonical (kernel, shape) row in the committed shape fixture.
+/// Pre-reg §2: "Shape sets are committed in `fixtures/shapes.json`;
+/// a new shape is a new row." A `Shape` carries the kernel id, the
+/// shape key (a short, human-readable name) and the shape dict.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Shape {
+    pub kernel: String,
+    pub shape_name: String,
+    /// Shape axes as "key=value" pairs in a deterministic order so a
+    /// canonical SHA is stable. E.g.
+    /// `vec![("m", 4096), ("n", 4096), ("k", 4096)]`.
+    pub axes: Vec<(String, u64)>,
+}
+
+impl Shape {
+    /// Encode the shape as the string the Report's `shape` field holds.
+    /// Matches the convention `"m=4096,n=4096,k=4096"` so a Report's
+    /// `shape` round-trips to and from this struct.
+    pub fn to_shape_str(&self) -> String {
+        self.axes
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+}
+
+/// A canonical shape fixture: at least one `Shape` per canonical
+/// kernel. The pre-reg lives on `fixtures/shapes.json`; this type is
+/// what loading that file deserializes into.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ShapeSet {
+    pub shapes: Vec<Shape>,
+}
+
+/// Audit a shape set against §2's canonical-kernel list. Returns a
+/// report of missing kernels (canonical ones with no shape row) and
+/// non-canonical kernels (shape rows pointing at an id outside the
+/// ten). The caller gates on `is_complete`.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ShapeSetAudit {
+    pub n_shapes: usize,
+    pub missing_kernels: Vec<String>,
+    pub noncanonical_kernels: Vec<String>,
+    pub is_complete: bool,
+}
+
+pub fn audit_shape_set(set: &ShapeSet) -> ShapeSetAudit {
+    use std::collections::BTreeSet;
+    let present: BTreeSet<&str> = set.shapes.iter().map(|s| s.kernel.as_str()).collect();
+    let missing: Vec<String> = CANONICAL_KERNELS
+        .iter()
+        .filter(|k| !present.contains(**k))
+        .map(|s| (*s).to_string())
+        .collect();
+    let noncanonical: Vec<String> = present
+        .iter()
+        .filter(|k| !is_canonical_kernel(k))
+        .map(|s| (*s).to_string())
+        .collect();
+    ShapeSetAudit {
+        n_shapes: set.shapes.len(),
+        is_complete: missing.is_empty() && noncanonical.is_empty(),
+        missing_kernels: missing,
+        noncanonical_kernels: noncanonical,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,5 +338,84 @@ mod tests {
         assert!(!r.rig_match);
         assert!(r.within_bound);
         assert!(!r.reproduced, "pre-reg §4: cross-rig is never reproduced");
+    }
+
+    #[test]
+    fn canonical_kernels_matches_the_pre_reg_table() {
+        assert_eq!(CANONICAL_KERNELS.len(), 10);
+        for k in [
+            "matmul-bf16",
+            "matmul-fp16",
+            "matmul-fp8",
+            "sdpa",
+            "rmsnorm",
+            "swiglu_mlp",
+            "fa_bwd",
+            "ln_bwd",
+            "emb_lookup",
+            "gemm_i8",
+        ] {
+            assert!(is_canonical_kernel(k), "{k} should be canonical");
+        }
+        assert!(!is_canonical_kernel("my-custom-kernel"));
+    }
+
+    #[test]
+    fn shape_to_shape_str_round_trips_axes() {
+        let s = Shape {
+            kernel: "matmul-bf16".into(),
+            shape_name: "4k-square".into(),
+            axes: vec![
+                ("m".into(), 4096),
+                ("n".into(), 4096),
+                ("k".into(), 4096),
+            ],
+        };
+        assert_eq!(s.to_shape_str(), "m=4096,n=4096,k=4096");
+    }
+
+    #[test]
+    fn audit_shape_set_flags_missing_canonical_kernels() {
+        let set = ShapeSet {
+            shapes: vec![Shape {
+                kernel: "matmul-bf16".into(),
+                shape_name: "small".into(),
+                axes: vec![("m".into(), 1024), ("n".into(), 1024), ("k".into(), 1024)],
+            }],
+        };
+        let r = audit_shape_set(&set);
+        assert_eq!(r.n_shapes, 1);
+        assert_eq!(r.missing_kernels.len(), 9);
+        assert!(!r.is_complete);
+    }
+
+    #[test]
+    fn audit_shape_set_flags_noncanonical_kernels() {
+        let set = ShapeSet {
+            shapes: vec![Shape {
+                kernel: "my-custom-kernel".into(),
+                shape_name: "s".into(),
+                axes: vec![("m".into(), 1)],
+            }],
+        };
+        let r = audit_shape_set(&set);
+        assert!(r.noncanonical_kernels.contains(&"my-custom-kernel".into()));
+        assert!(!r.is_complete);
+    }
+
+    #[test]
+    fn audit_shape_set_complete_when_all_ten_canonical_kernels_present() {
+        let shapes: Vec<Shape> = CANONICAL_KERNELS
+            .iter()
+            .map(|k| Shape {
+                kernel: (*k).to_string(),
+                shape_name: "default".into(),
+                axes: vec![("m".into(), 1)],
+            })
+            .collect();
+        let r = audit_shape_set(&ShapeSet { shapes });
+        assert_eq!(r.missing_kernels.len(), 0);
+        assert_eq!(r.noncanonical_kernels.len(), 0);
+        assert!(r.is_complete);
     }
 }
