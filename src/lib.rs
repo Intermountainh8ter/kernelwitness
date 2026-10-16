@@ -45,9 +45,31 @@ fn percentile(sorted: &[f64], q: f64) -> f64 {
 }
 
 pub fn aggregate(rig: Rig, kernel: &str, shape: &str, trials: &[Trial]) -> Report {
-    assert!(!trials.is_empty(), "aggregate requires at least one trial");
-    let n = trials.len();
-    let mut xs: Vec<f64> = trials.iter().map(|t| t.elapsed_us).collect();
+    aggregate_with_warmup(rig, kernel, shape, trials, 0)
+}
+
+/// Aggregate `trials` after dropping the first `n_warm` entries, per
+/// pre-reg §3's N_warm = 5 default. The scaffold's `aggregate` kept
+/// every trial; this is the primitive callers should prefer when the
+/// trials come from a live benchmark driver that captures the warm-up.
+///
+/// Panics if fewer than `n_warm + 1` trials are supplied.
+pub fn aggregate_with_warmup(
+    rig: Rig,
+    kernel: &str,
+    shape: &str,
+    trials: &[Trial],
+    n_warm: usize,
+) -> Report {
+    assert!(
+        trials.len() > n_warm,
+        "aggregate_with_warmup requires at least {} trials (got {})",
+        n_warm + 1,
+        trials.len()
+    );
+    let sample = &trials[n_warm..];
+    let n = sample.len();
+    let mut xs: Vec<f64> = sample.iter().map(|t| t.elapsed_us).collect();
     let mean = xs.iter().sum::<f64>() / n as f64;
     let var = xs.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n as f64;
     let stdev = var.sqrt();
@@ -90,6 +112,37 @@ pub fn diff(a: &Report, b: &Report) -> Diff {
     }
 }
 
+/// Pre-reg §4 reproducibility verdict. Rig fingerprints must match
+/// AND `|b.mean - a.mean| <= 3 * a.stdev`. The repo refuses to call a
+/// cross-rig comparison a reproduction.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ReproducibilityReport {
+    pub rig_match: bool,
+    pub delta_mean_us: f64,
+    /// `3 * a.stdev_us`, the pre-reg §4 bound.
+    pub three_sigma_bound_us: f64,
+    /// `delta_mean_us.abs() <= three_sigma_bound_us`.
+    pub within_bound: bool,
+    /// `rig_match && within_bound`. The only honest "reproduced" verdict.
+    pub reproduced: bool,
+}
+
+/// Compute the reproducibility verdict for a candidate `b` against a
+/// baseline `a`. The baseline's stdev defines the three-sigma band.
+pub fn reproducibility(baseline: &Report, candidate: &Report) -> ReproducibilityReport {
+    let delta = candidate.mean_us - baseline.mean_us;
+    let bound = 3.0 * baseline.stdev_us;
+    let rig_match = baseline.rig == candidate.rig;
+    let within_bound = delta.abs() <= bound;
+    ReproducibilityReport {
+        rig_match,
+        delta_mean_us: delta,
+        three_sigma_bound_us: bound,
+        within_bound,
+        reproduced: rig_match && within_bound,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -128,5 +181,73 @@ mod tests {
         assert!(!d.rig_match);
         assert!((d.delta_mean_us - 20.0).abs() < 1e-12);
         assert!((d.delta_pct - 20.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn aggregate_with_warmup_discards_the_first_n_warm_trials() {
+        // 5 warm-up trials at 1000us, then 10 real trials at 100us.
+        let mut trials: Vec<Trial> =
+            (0..5).map(|_| Trial { elapsed_us: 1000.0 }).collect();
+        trials.extend((0..10).map(|_| Trial { elapsed_us: 100.0 }));
+        let r = aggregate_with_warmup(rig(), "matmul", "mnk=1024", &trials, 5);
+        assert_eq!(r.n, 10);
+        assert!((r.mean_us - 100.0).abs() < 1e-12);
+        assert!(r.stdev_us.abs() < 1e-12);
+    }
+
+    #[test]
+    fn aggregate_with_warmup_panics_when_everything_is_warmup() {
+        let trials: Vec<Trial> = (0..5).map(|_| Trial { elapsed_us: 1.0 }).collect();
+        let result = std::panic::catch_unwind(|| {
+            aggregate_with_warmup(rig(), "k", "s", &trials, 5)
+        });
+        assert!(result.is_err());
+    }
+
+    fn report_mean_stdev(mean: f64, stdev: f64) -> Report {
+        Report {
+            rig: rig(),
+            kernel: "matmul-bf16".into(),
+            shape: "mnk=1024".into(),
+            n: 50,
+            mean_us: mean,
+            stdev_us: stdev,
+            p50_us: mean,
+            p95_us: mean,
+            p99_us: mean,
+        }
+    }
+
+    #[test]
+    fn reproducibility_passes_within_three_sigma_on_same_rig() {
+        let a = report_mean_stdev(100.0, 5.0);
+        let b = report_mean_stdev(110.0, 5.0); // delta=10, bound=15
+        let r = reproducibility(&a, &b);
+        assert!(r.rig_match);
+        assert!(r.within_bound);
+        assert!(r.reproduced);
+    }
+
+    #[test]
+    fn reproducibility_fails_outside_three_sigma_on_same_rig() {
+        let a = report_mean_stdev(100.0, 1.0);
+        let b = report_mean_stdev(110.0, 1.0); // delta=10, bound=3
+        let r = reproducibility(&a, &b);
+        assert!(r.rig_match);
+        assert!(!r.within_bound);
+        assert!(!r.reproduced);
+    }
+
+    #[test]
+    fn reproducibility_never_true_cross_rig_even_if_within_bound() {
+        let mut a = report_mean_stdev(100.0, 50.0);
+        let b = report_mean_stdev(102.0, 50.0);
+        a.rig.driver = "26.1".into();
+        let mut b = b;
+        b.rig.driver = "26.2".into();
+        let r = reproducibility(&a, &b);
+        assert!(!r.rig_match);
+        assert!(r.within_bound);
+        assert!(!r.reproduced, "pre-reg §4: cross-rig is never reproduced");
     }
 }

@@ -22,10 +22,18 @@ version differs.
 ## What is in this scaffold
 
 - `Rig`, `Trial`, `Report` types with full rig fingerprint.
-- `aggregate(rig, kernel, shape, trials)` producing mean / stdev /
-  p50 / p95 / p99.
+- `aggregate(rig, kernel, shape, trials)` and
+  `aggregate_with_warmup(rig, kernel, shape, trials, n_warm)` producing
+  mean / stdev / p50 / p95 / p99 — pre-reg §3's N_warm=5 default is
+  wired through the CLI's `--warmup`.
 - `diff(a, b)` with `rig_match` flag and per-mean delta.
-- `kernelwitness aggregate` and `kernelwitness compare` CLI.
+- `reproducibility(baseline, candidate) -> ReproducibilityReport`:
+  pre-reg §4's "same rig AND |delta_mean| ≤ 3·stdev" verdict. The repo
+  refuses to call a cross-rig comparison a reproduction; the
+  `reproduced` field reflects that explicitly.
+- CLI: `kernelwitness aggregate`, `compare`, `reproducibility`.
+  Exit codes on `reproducibility`: 0 reproduced, 1 within-bound but
+  cross-rig, 2 out of 3-sigma band.
 
 Not in this commit (openly tracked):
 
@@ -33,7 +41,7 @@ Not in this commit (openly tracked):
   SwiGLU MLP, flash-attn backward, LayerNorm backward, embedding
   lookup, int8 gemm.
 - `kernelwitness bench --kernel <name> --shape <mnk>` that runs the
-  N trials with warm-up excluded.
+  N trials and emits a Trials JSON directly.
 - Rig fingerprint auto-collector (reads nvidia-smi / rocm-smi + torch
   module versions).
 

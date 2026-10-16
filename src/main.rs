@@ -1,7 +1,7 @@
 //! kernelwitness CLI — scaffold.
 
 use clap::{Parser, Subcommand};
-use kernelwitness::{aggregate, diff, Report, Rig, Trial};
+use kernelwitness::{aggregate_with_warmup, diff, reproducibility, Report, Rig, Trial};
 
 #[derive(Parser)]
 #[command(
@@ -17,7 +17,8 @@ struct Cli {
 #[derive(Subcommand)]
 enum Cmd {
     /// Aggregate a trials JSON into a report with rig fingerprint and
-    /// percentiles.
+    /// percentiles. `--warmup` discards the first N trials per
+    /// pre-reg §3 (default 5).
     Aggregate {
         trials: std::path::PathBuf,
         /// Rig fingerprint JSON.
@@ -27,11 +28,20 @@ enum Cmd {
         kernel: String,
         #[arg(long)]
         shape: String,
+        #[arg(long, default_value_t = 5)]
+        warmup: usize,
     },
     /// Diff two reports and attribute to rig fingerprint fields.
     Compare {
         a: std::path::PathBuf,
         b: std::path::PathBuf,
+    },
+    /// Pre-reg §4 reproducibility verdict: candidate reproduces baseline
+    /// iff rigs match AND |delta_mean| <= 3*baseline.stdev. Exit codes:
+    /// 0 reproduced, 1 within-bound but cross-rig, 2 out-of-bound.
+    Reproducibility {
+        baseline: std::path::PathBuf,
+        candidate: std::path::PathBuf,
     },
     Version,
 }
@@ -53,10 +63,11 @@ fn main() -> anyhow::Result<()> {
             rig,
             kernel,
             shape,
+            warmup,
         } => {
             let t: Trials = load_json(&trials)?;
             let r: Rig = load_json(&rig)?;
-            let out = aggregate(r, &kernel, &shape, &t.trials);
+            let out = aggregate_with_warmup(r, &kernel, &shape, &t.trials, warmup);
             println!("{}", serde_json::to_string_pretty(&out)?);
         }
         Cmd::Compare { a, b } => {
@@ -66,6 +77,24 @@ fn main() -> anyhow::Result<()> {
             println!("{}", serde_json::to_string_pretty(&d)?);
             if !d.rig_match {
                 println!("note: rigs differ — see each report's `rig` field for attribution");
+            }
+        }
+        Cmd::Reproducibility {
+            baseline,
+            candidate,
+        } => {
+            let a: Report = load_json(&baseline)?;
+            let b: Report = load_json(&candidate)?;
+            let r = reproducibility(&a, &b);
+            let reproduced = r.reproduced;
+            let within = r.within_bound;
+            println!("{}", serde_json::to_string_pretty(&r)?);
+            if !reproduced {
+                if within {
+                    std::process::exit(1); // cross-rig
+                } else {
+                    std::process::exit(2); // out of 3-sigma band
+                }
             }
         }
         Cmd::Version => println!("kernelwitness {}", env!("CARGO_PKG_VERSION")),
