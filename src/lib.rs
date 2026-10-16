@@ -5,6 +5,8 @@
 //! the rig fingerprint so reports from different machines can be
 //! compared.
 
+pub mod importers;
+
 use serde::{Deserialize, Serialize};
 
 /// What machine the trial was run on. Reproducing the trial requires
