@@ -23,3 +23,5 @@ path = "src/main.rs"
 [lib]
 name = "kernelwitness"
 path = "src/lib.rs"
+
+[workspace]
