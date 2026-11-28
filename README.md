@@ -40,6 +40,12 @@ version differs.
   items (raw_flip_rate 0.0076), 8 adjudicated genuine, so
   adjudicated_to_raw_flip_ratio 0.05263157894736842 (hypothesis: below
   0.20, met). Synthetic data only; it says nothing about real kernels.
+- CLI: `kernelwitness screen-sim`, a seeded sweep of screening thresholds
+  over mixed true and numerical-noise flips. Result
+  `results/765-screen-yield.json`: at threshold 0.01, 178 flagged
+  candidates of which 35 true, screen_precision 0.19662921348314608
+  (hypothesis: between 0.10 and 0.50, met); the batch-invariant arm has
+  screen_precision 0.0 at every threshold. Synthetic data only.
 
 Not in this commit (openly tracked):
 

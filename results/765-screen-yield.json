@@ -1,0 +1,73 @@
+{
+  "batch_invariant_sweep": [
+    {
+      "flagged": 141,
+      "screen_precision": 0.0,
+      "threshold": 0.01,
+      "true_flagged": 0
+    },
+    {
+      "flagged": 98,
+      "screen_precision": 0.0,
+      "threshold": 0.02,
+      "true_flagged": 0
+    },
+    {
+      "flagged": 10,
+      "screen_precision": 0.0,
+      "threshold": 0.05,
+      "true_flagged": 0
+    },
+    {
+      "flagged": 0,
+      "screen_precision": 0.0,
+      "threshold": 0.1,
+      "true_flagged": 0
+    }
+  ],
+  "items": 20000,
+  "noise_sd": 0.02,
+  "provenance": {
+    "command": "target/release/kernelwitness screen-sim --seed 7 --items 20000 --noise-sd 0.02 --true-flip-rate 0.002 --thresholds 0.01,0.02,0.05,0.10 --out results/765-screen-yield.json",
+    "data_sources": [
+      {
+        "license": "MIT (own code, no external data)",
+        "url": "synthetic: seeded xorshift PRNG inside the component"
+      }
+    ],
+    "hardware": "linux-x86_64 cpu, no gpu",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T01:19:30Z",
+    "wall_s": 0.003792166
+  },
+  "seed": 7,
+  "threshold_sweep": [
+    {
+      "flagged": 178,
+      "screen_precision": 0.19662921348314608,
+      "threshold": 0.01,
+      "true_flagged": 35
+    },
+    {
+      "flagged": 138,
+      "screen_precision": 0.2536231884057971,
+      "threshold": 0.02,
+      "true_flagged": 35
+    },
+    {
+      "flagged": 42,
+      "screen_precision": 0.8333333333333334,
+      "threshold": 0.05,
+      "true_flagged": 35
+    },
+    {
+      "flagged": 35,
+      "screen_precision": 1.0,
+      "threshold": 0.1,
+      "true_flagged": 35
+    }
+  ],
+  "true_flip_rate": 0.002
+}

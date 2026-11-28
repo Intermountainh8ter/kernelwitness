@@ -74,6 +74,64 @@ pub fn simulate(seed: u64, items: usize, noise_sd: f64, margin: f64) -> FlipStat
     }
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct ScreenPoint {
+    pub threshold: f64,
+    pub flagged: usize,
+    pub true_flagged: usize,
+    pub screen_precision: f64,
+}
+
+/// Candidate flips (label changed) are flagged when the score moved by more
+/// than each threshold. A fraction `true_flip_rate` of items are true
+/// behavioural flips: the score moves by 0.1 to 0.5 across the boundary.
+/// Precision is true flips among flagged; 0 when nothing is flagged.
+pub fn screen_sweep(
+    seed: u64,
+    items: usize,
+    noise_sd: f64,
+    true_flip_rate: f64,
+    thresholds: &[f64],
+) -> Vec<ScreenPoint> {
+    let mut rng = XorShift::new(seed);
+    let mut flagged = vec![0usize; thresholds.len()];
+    let mut truef = vec![0usize; thresholds.len()];
+    for _ in 0..items {
+        let is_true = rng.uniform() < true_flip_rate;
+        let (s, base) = if is_true {
+            let m = 0.1 + 0.4 * rng.uniform();
+            let a = m * rng.uniform();
+            let sign = if rng.uniform() < 0.5 { 1.0 } else { -1.0 };
+            (sign * a, -sign * (m - a) - sign * a)
+        } else {
+            (rng.uniform() * 2.0 - 1.0, 0.0)
+        };
+        let delta = base + noise_sd * rng.approx_normal();
+        let p = s + delta;
+        if (s >= 0.0) == (p >= 0.0) {
+            continue;
+        }
+        for (i, t) in thresholds.iter().enumerate() {
+            if delta.abs() > *t {
+                flagged[i] += 1;
+                if is_true {
+                    truef[i] += 1;
+                }
+            }
+        }
+    }
+    thresholds
+        .iter()
+        .enumerate()
+        .map(|(i, t)| ScreenPoint {
+            threshold: *t,
+            flagged: flagged[i],
+            true_flagged: truef[i],
+            screen_precision: if flagged[i] == 0 { 0.0 } else { truef[i] as f64 / flagged[i] as f64 },
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -111,5 +169,28 @@ mod tests {
         let m = v.iter().sum::<f64>() / v.len() as f64;
         let var = v.iter().map(|x| (x - m).powi(2)).sum::<f64>() / v.len() as f64;
         assert!(m.abs() < 0.05 && (var - 1.0).abs() < 0.05);
+    }
+
+    #[test]
+    fn screen_deterministic_and_bounded() {
+        let t = [0.01, 0.05];
+        let a = screen_sweep(7, 5000, 0.02, 0.01, &t);
+        assert_eq!(a, screen_sweep(7, 5000, 0.02, 0.01, &t));
+        assert!(a.iter().all(|p| p.true_flagged <= p.flagged));
+        assert!(a[0].flagged >= a[1].flagged);
+    }
+
+    #[test]
+    fn screen_zero_true_rate_has_zero_precision() {
+        let a = screen_sweep(7, 20000, 0.02, 0.0, &[0.01]);
+        assert!(a[0].flagged > 0);
+        assert_eq!(a[0].screen_precision, 0.0);
+    }
+
+    #[test]
+    fn screen_true_flips_always_cross() {
+        let a = screen_sweep(7, 20000, 0.0, 0.01, &[0.0]);
+        assert!(a[0].flagged > 0);
+        assert_eq!(a[0].flagged, a[0].true_flagged);
     }
 }

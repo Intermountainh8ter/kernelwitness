@@ -57,6 +57,22 @@ enum Cmd {
         #[arg(long)]
         out: std::path::PathBuf,
     },
+    /// Model-free screen-threshold sweep: precision of flagged candidate
+    /// flips when true behavioural flips mix with numerical-noise flips.
+    ScreenSim {
+        #[arg(long, default_value_t = 7)]
+        seed: u64,
+        #[arg(long, default_value_t = 20000)]
+        items: usize,
+        #[arg(long)]
+        noise_sd: f64,
+        #[arg(long)]
+        true_flip_rate: f64,
+        #[arg(long, value_delimiter = ',')]
+        thresholds: Vec<f64>,
+        #[arg(long)]
+        out: std::path::PathBuf,
+    },
     Version,
 }
 
@@ -158,6 +174,42 @@ fn main() -> anyhow::Result<()> {
                     "data_sources": [{"url": "synthetic: seeded xorshift PRNG inside the component", "license": "MIT (own code, no external data)"}],
                 }),
             );
+            if let Some(d) = out.parent() {
+                std::fs::create_dir_all(d)?;
+            }
+            std::fs::write(&out, serde_json::to_string_pretty(&v)? + "\n")?;
+            println!("{}", serde_json::to_string_pretty(&v)?);
+        }
+        Cmd::ScreenSim {
+            seed,
+            items,
+            noise_sd,
+            true_flip_rate,
+            thresholds,
+            out,
+        } => {
+            let t0 = std::time::Instant::now();
+            let started = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs();
+            let sweep = kernelwitness::flipsim::screen_sweep(seed, items, noise_sd, true_flip_rate, &thresholds);
+            let inv = kernelwitness::flipsim::screen_sweep(seed, items, noise_sd, 0.0, &thresholds);
+            let v = serde_json::json!({
+                "items": items,
+                "noise_sd": noise_sd,
+                "true_flip_rate": true_flip_rate,
+                "seed": seed,
+                "threshold_sweep": sweep,
+                "batch_invariant_sweep": inv,
+                "provenance": {
+                    "started_at": iso_utc(started),
+                    "seeds": [seed],
+                    "command": std::env::args().collect::<Vec<_>>().join(" "),
+                    "hardware": format!("{}-{} cpu, no gpu", std::env::consts::OS, std::env::consts::ARCH),
+                    "wall_s": t0.elapsed().as_secs_f64(),
+                    "data_sources": [{"url": "synthetic: seeded xorshift PRNG inside the component", "license": "MIT (own code, no external data)"}],
+                },
+            });
             if let Some(d) = out.parent() {
                 std::fs::create_dir_all(d)?;
             }
