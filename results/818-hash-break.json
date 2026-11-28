@@ -1,0 +1,51 @@
+{
+  "control": {
+    "exact": {
+      "broken": 0,
+      "rate_batch_1_vs_8": 0.0
+    },
+    "token": {
+      "broken": 0,
+      "rate_batch_1_vs_8": 0.0
+    },
+    "tolerance": {
+      "broken": 0,
+      "rate_batch_1_vs_8": 0.0
+    }
+  },
+  "gap_mean": 2.0,
+  "hash_break": {
+    "exact": {
+      "broken": 5000,
+      "rate_batch_1_vs_8": 1.0
+    },
+    "token": {
+      "broken": 120,
+      "rate_batch_1_vs_8": 0.024
+    },
+    "tolerance": {
+      "broken": 0,
+      "rate_batch_1_vs_8": 0.0
+    }
+  },
+  "noise_sd": 0.001,
+  "provenance": {
+    "command": "target/release/kernelwitness hash-sim --seed 7 --sequences 5000 --steps 64 --gap-mean 2.0 --noise-sd 0.001 --tolerance 0.01 --out results/818-hash-break.json",
+    "data_sources": [
+      {
+        "license": "MIT (own code, no external data)",
+        "url": "synthetic: seeded xorshift PRNG inside the component"
+      }
+    ],
+    "hardware": "linux-x86_64 cpu, no gpu",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T04:56:20Z",
+    "wall_s": 0.089661258
+  },
+  "seed": 7,
+  "sequences": 5000,
+  "steps": 64,
+  "tolerance": 0.01
+}

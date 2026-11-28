@@ -53,6 +53,12 @@ version differs.
   uniform_rate_at_8_shapes is 0.38333333333333336; the fixed regular shape
   detects 0.0 and the zero-bug control_rate is 0.0 (hypothesis: boundary
   at or above 0.70, uniform at least 0.10 lower, met). Synthetic data only.
+- CLI: `kernelwitness hash-sim`, a seeded simulation of how often a
+  bit-exact logit hash, a token-sequence hash and a tolerance hash break
+  between batch 1 and batch 8. Result `results/818-hash-break.json`: exact
+  rate 1.0, token rate 0.024, tolerance rate 0.0, and 0.0 for all three in
+  the zero-noise control (hypothesis: exact at least 0.99, token 0.01 to
+  0.15, tolerance below 0.01, met). Synthetic data only.
 
 Not in this commit (openly tracked):
 

@@ -6,6 +6,7 @@
 //! compared.
 
 pub mod flipsim;
+pub mod hashsim;
 pub mod importers;
 pub mod shapesim;
 
