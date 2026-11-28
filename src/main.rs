@@ -105,6 +105,24 @@ enum Cmd {
         #[arg(long)]
         out: std::path::PathBuf,
     },
+    /// Model-free simulation of argmax flips between two f32 accumulation
+    /// orders (prefix-cache hit versus miss).
+    CacheSim {
+        #[arg(long, default_value_t = 7)]
+        seed: u64,
+        #[arg(long, default_value_t = 20000)]
+        positions: usize,
+        #[arg(long, default_value_t = 2048)]
+        hidden: usize,
+        #[arg(long, default_value_t = 0.05)]
+        gap_mean: f64,
+        #[arg(long, default_value_t = 64)]
+        chunk_hit: usize,
+        #[arg(long, default_value_t = 192)]
+        chunk_miss: usize,
+        #[arg(long)]
+        out: std::path::PathBuf,
+    },
     Version,
 }
 
@@ -294,6 +312,40 @@ fn main() -> anyhow::Result<()> {
                 .duration_since(std::time::UNIX_EPOCH)?
                 .as_secs();
             let r = kernelwitness::hashsim::simulate(seed, sequences, steps, gap_mean, noise_sd, tolerance);
+            let mut v = serde_json::to_value(&r)?;
+            let o = v.as_object_mut().unwrap();
+            o.insert("seed".into(), seed.into());
+            o.insert(
+                "provenance".into(),
+                serde_json::json!({
+                    "started_at": iso_utc(started),
+                    "seeds": [seed],
+                    "command": std::env::args().collect::<Vec<_>>().join(" "),
+                    "hardware": format!("{}-{} cpu, no gpu", std::env::consts::OS, std::env::consts::ARCH),
+                    "wall_s": t0.elapsed().as_secs_f64(),
+                    "data_sources": [{"url": "synthetic: seeded xorshift PRNG inside the component", "license": "MIT (own code, no external data)"}],
+                }),
+            );
+            if let Some(d) = out.parent() {
+                std::fs::create_dir_all(d)?;
+            }
+            std::fs::write(&out, serde_json::to_string_pretty(&v)? + "\n")?;
+            println!("{}", serde_json::to_string_pretty(&v)?);
+        }
+        Cmd::CacheSim {
+            seed,
+            positions,
+            hidden,
+            gap_mean,
+            chunk_hit,
+            chunk_miss,
+            out,
+        } => {
+            let t0 = std::time::Instant::now();
+            let started = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs();
+            let r = kernelwitness::cachesim::simulate(seed, positions, hidden, gap_mean, chunk_hit, chunk_miss);
             let mut v = serde_json::to_value(&r)?;
             let o = v.as_object_mut().unwrap();
             o.insert("seed".into(), seed.into());

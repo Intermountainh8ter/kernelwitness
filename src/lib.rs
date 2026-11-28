@@ -5,6 +5,7 @@
 //! the rig fingerprint so reports from different machines can be
 //! compared.
 
+pub mod cachesim;
 pub mod flipsim;
 pub mod hashsim;
 pub mod importers;

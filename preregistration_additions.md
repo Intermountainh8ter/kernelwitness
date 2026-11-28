@@ -45,3 +45,15 @@ Expected: exact rate at least 0.99; token-sequence rate 0.01 to 0.15; tolerance 
 Falsifier: exact rate below 0.99, token-sequence rate outside 0.01 to 0.15, tolerance rate of 0.01 or more, or any break in the zero-noise control.
 
 Run: cargo run --locked -q --release -- hash-sim --seed 7 --sequences 5000 --steps 64 --gap-mean 2.0 --noise-sd 0.001 --tolerance 0.01 --out results/818-hash-break.json
+
+## 2026-11-28T05:53:28Z cache-flip proposal:16a3085730dd1d33fd8dd8ef7622cc16daa22fa8cb53eb345bb88ff1487e7b4c
+
+Hypothesis: with 20000 synthetic positions, hidden size 2048, standard-normal activations and weights, two competing logits whose true gap is exponentially distributed with mean 0.05, and f32 sequential accumulation within chunks of 64 (cache hit) versus chunks of 192 (cache miss), the max abs logit difference between hit and miss is nonzero, the argmax flip rate is below 0.01, and the same-chunking control has 0 flips and 0.0 max abs logit difference.
+
+Metric: /argmax_flip/rate_overall in results/833-cache-flip.json.
+
+Expected: argmax flip rate overall below 0.01 (zero allowed); control flips equal 0; hit-vs-miss max abs logit difference above 0.0.
+
+Falsifier: argmax flip rate of 0.01 or more, any flip or nonzero logit difference in the same-chunking control, or a max abs logit difference of exactly 0.0 between hit and miss orders.
+
+Run: cargo run --locked -q --release -- cache-sim --seed 7 --positions 20000 --hidden 2048 --gap-mean 0.05 --chunk-hit 64 --chunk-miss 192 --out results/833-cache-flip.json

@@ -1,0 +1,33 @@
+{
+  "argmax_flip": {
+    "flips": 2,
+    "max_abs_logit_diff": 0.0000762939453125,
+    "rate_overall": 0.0001
+  },
+  "chunk_hit": 64,
+  "chunk_miss": 192,
+  "control": {
+    "flips": 0,
+    "max_abs_logit_diff": 0.0,
+    "rate_overall": 0.0
+  },
+  "gap_mean": 0.05,
+  "hidden": 2048,
+  "positions": 20000,
+  "provenance": {
+    "command": "target/release/kernelwitness cache-sim --seed 7 --positions 20000 --hidden 2048 --gap-mean 0.05 --chunk-hit 64 --chunk-miss 192 --out results/833-cache-flip.json",
+    "data_sources": [
+      {
+        "license": "MIT (own code, no external data)",
+        "url": "synthetic: seeded xorshift PRNG inside the component"
+      }
+    ],
+    "hardware": "linux-x86_64 cpu, no gpu",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T05:53:52Z",
+    "wall_s": 3.411482811
+  },
+  "seed": 7
+}

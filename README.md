@@ -59,6 +59,12 @@ version differs.
   rate 1.0, token rate 0.024, tolerance rate 0.0, and 0.0 for all three in
   the zero-noise control (hypothesis: exact at least 0.99, token 0.01 to
   0.15, tolerance below 0.01, met). Synthetic data only.
+- CLI: `kernelwitness cache-sim`, a seeded simulation of argmax flips between
+  two f32 accumulation orders (chunks of 64 for a cache hit, 192 for a miss).
+  Result `results/833-cache-flip.json`: 2 flips of 20000 positions,
+  rate_overall 0.0001, max_abs_logit_diff 7.62939453125e-05, and 0 flips and
+  0.0 max_abs_logit_diff in the same-order control (hypothesis: rate below
+  0.01, control zero, met). Synthetic data only.
 
 Not in this commit (openly tracked):
 
