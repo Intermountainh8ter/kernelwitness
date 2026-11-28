@@ -5,6 +5,7 @@
 //! the rig fingerprint so reports from different machines can be
 //! compared.
 
+pub mod flipsim;
 pub mod importers;
 
 use serde::{Deserialize, Serialize};

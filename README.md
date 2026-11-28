@@ -34,6 +34,12 @@ version differs.
 - CLI: `kernelwitness aggregate`, `compare`, `reproducibility`.
   Exit codes on `reproducibility`: 0 reproduced, 1 within-bound but
   cross-rig, 2 out of 3-sigma band.
+- CLI: `kernelwitness flip-sim`, a model-free seeded simulation of raw
+  label flips against flips adjudicated genuine by a score-move margin.
+  Result `results/751-flip-adjudication.json`: 152 raw flips of 20000
+  items (raw_flip_rate 0.0076), 8 adjudicated genuine, so
+  adjudicated_to_raw_flip_ratio 0.05263157894736842 (hypothesis: below
+  0.20, met). Synthetic data only; it says nothing about real kernels.
 
 Not in this commit (openly tracked):
 

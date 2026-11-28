@@ -1,0 +1,26 @@
+{
+  "adjudicated_flip_rate": 0.0004,
+  "adjudicated_genuine": 8,
+  "adjudicated_to_raw_flip_ratio": 0.05263157894736842,
+  "items": 20000,
+  "margin": 0.05,
+  "noise_sd": 0.02,
+  "provenance": {
+    "command": "target/release/kernelwitness flip-sim --seed 7 --items 20000 --noise-sd 0.02 --margin 0.05 --out results/751-flip-adjudication.json",
+    "data_sources": [
+      {
+        "license": "MIT (own code, no external data)",
+        "url": "synthetic: seeded xorshift PRNG inside the component"
+      }
+    ],
+    "hardware": "linux-x86_64 cpu, no gpu",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T00:22:26Z",
+    "wall_s": 0.002405903
+  },
+  "raw_flip_rate": 0.0076,
+  "raw_flips": 152,
+  "seed": 7
+}
