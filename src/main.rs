@@ -73,6 +73,20 @@ enum Cmd {
         #[arg(long)]
         out: std::path::PathBuf,
     },
+    /// Model-free sweep of bug detection rate against the number of shapes a
+    /// suite samples and the sampling strategy.
+    ShapeSim {
+        #[arg(long, default_value_t = 7)]
+        seed: u64,
+        #[arg(long, default_value_t = 2000)]
+        bugs_per_class: usize,
+        #[arg(long, default_value_t = 256)]
+        pool: usize,
+        #[arg(long, value_delimiter = ',')]
+        counts: Vec<usize>,
+        #[arg(long)]
+        out: std::path::PathBuf,
+    },
     Version,
 }
 
@@ -210,6 +224,38 @@ fn main() -> anyhow::Result<()> {
                     "data_sources": [{"url": "synthetic: seeded xorshift PRNG inside the component", "license": "MIT (own code, no external data)"}],
                 },
             });
+            if let Some(d) = out.parent() {
+                std::fs::create_dir_all(d)?;
+            }
+            std::fs::write(&out, serde_json::to_string_pretty(&v)? + "\n")?;
+            println!("{}", serde_json::to_string_pretty(&v)?);
+        }
+        Cmd::ShapeSim {
+            seed,
+            bugs_per_class,
+            pool,
+            counts,
+            out,
+        } => {
+            let t0 = std::time::Instant::now();
+            let started = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs();
+            let r = kernelwitness::shapesim::simulate(seed, bugs_per_class, pool, &counts);
+            let mut v = serde_json::to_value(&r)?;
+            let o = v.as_object_mut().unwrap();
+            o.insert("seed".into(), seed.into());
+            o.insert(
+                "provenance".into(),
+                serde_json::json!({
+                    "started_at": iso_utc(started),
+                    "seeds": [seed],
+                    "command": std::env::args().collect::<Vec<_>>().join(" "),
+                    "hardware": format!("{}-{} cpu, no gpu", std::env::consts::OS, std::env::consts::ARCH),
+                    "wall_s": t0.elapsed().as_secs_f64(),
+                    "data_sources": [{"url": "synthetic: seeded xorshift PRNG inside the component", "license": "MIT (own code, no external data)"}],
+                }),
+            );
             if let Some(d) = out.parent() {
                 std::fs::create_dir_all(d)?;
             }

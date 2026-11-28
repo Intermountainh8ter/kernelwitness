@@ -46,6 +46,13 @@ version differs.
   candidates of which 35 true, screen_precision 0.19662921348314608
   (hypothesis: between 0.10 and 0.50, met); the batch-invariant arm has
   screen_precision 0.0 at every threshold. Synthetic data only.
+- CLI: `kernelwitness shape-sim`, a seeded sweep of how many shapes a suite
+  samples and how it samples them, against injected tail-mask, off-by-one
+  and block-size bugs. Result `results/794-shape-detection.json`: at 8
+  shapes boundary_biased_rate_at_8_shapes is 0.8386666666666667 and
+  uniform_rate_at_8_shapes is 0.38333333333333336; the fixed regular shape
+  detects 0.0 and the zero-bug control_rate is 0.0 (hypothesis: boundary
+  at or above 0.70, uniform at least 0.10 lower, met). Synthetic data only.
 
 Not in this commit (openly tracked):
 

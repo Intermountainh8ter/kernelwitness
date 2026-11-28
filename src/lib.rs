@@ -7,6 +7,7 @@
 
 pub mod flipsim;
 pub mod importers;
+pub mod shapesim;
 
 use serde::{Deserialize, Serialize};
 

@@ -1,0 +1,46 @@
+{
+  "bugs_per_class": 2000,
+  "control_rate": 0.0,
+  "detection": {
+    "boundary_biased_rate_at_16_shapes": 0.954,
+    "boundary_biased_rate_at_1_shapes": 0.22,
+    "boundary_biased_rate_at_2_shapes": 0.3968333333333333,
+    "boundary_biased_rate_at_4_shapes": 0.6308333333333334,
+    "boundary_biased_rate_at_8_shapes": 0.8386666666666667,
+    "fixed_regular_rate_at_16_shapes": 0.0,
+    "fixed_regular_rate_at_1_shapes": 0.0,
+    "fixed_regular_rate_at_2_shapes": 0.0,
+    "fixed_regular_rate_at_4_shapes": 0.0,
+    "fixed_regular_rate_at_8_shapes": 0.0,
+    "uniform_rate_at_16_shapes": 0.591,
+    "uniform_rate_at_1_shapes": 0.07183333333333333,
+    "uniform_rate_at_2_shapes": 0.12383333333333334,
+    "uniform_rate_at_4_shapes": 0.239,
+    "uniform_rate_at_8_shapes": 0.38333333333333336
+  },
+  "per_class": {
+    "boundary_biased_block_size_rate_at_16_shapes": 0.8675,
+    "boundary_biased_off_by_one_rate_at_16_shapes": 0.9955,
+    "boundary_biased_tail_mask_rate_at_16_shapes": 0.999,
+    "uniform_block_size_rate_at_16_shapes": 0.9035,
+    "uniform_off_by_one_rate_at_16_shapes": 0.2255,
+    "uniform_tail_mask_rate_at_16_shapes": 0.644
+  },
+  "pool": 256,
+  "provenance": {
+    "command": "target/release/kernelwitness shape-sim --seed 7 --bugs-per-class 2000 --pool 256 --counts 1,2,4,8,16 --out results/794-shape-detection.json",
+    "data_sources": [
+      {
+        "license": "MIT (own code, no external data)",
+        "url": "synthetic: seeded xorshift PRNG inside the component"
+      }
+    ],
+    "hardware": "linux-x86_64 cpu, no gpu",
+    "seeds": [
+      7
+    ],
+    "started_at": "2026-11-28T03:14:16Z",
+    "wall_s": 0.064950685
+  },
+  "seed": 7
+}

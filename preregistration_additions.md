@@ -21,3 +21,15 @@ Expected: screen_precision at threshold 0.01 below 0.50 (roughly 0.2 to 0.4), ri
 Falsifier: screen_precision at the lowest threshold of 0.50 or more, or below 0.10, or a nonzero precision in the batch-invariant arm.
 
 Run: cargo run --locked -q --release -- screen-sim --seed 7 --items 20000 --noise-sd 0.02 --true-flip-rate 0.002 --thresholds 0.01,0.02,0.05,0.10 --out results/765-screen-yield.json
+
+## 2026-11-28T03:14:12Z shape-detection proposal:831819b39f2e3a7ed47c3723cdde24807301591d9e4c47a66d809a022e7d7cb0
+
+Hypothesis: with 2000 simulated bugs per class (tail-mask, off-by-one, block-size), each failing on a known subset of a 256-size shape pool whose regular shapes are the multiples of 64 (no bug fails on a regular shape), boundary-biased sampling of 8 shapes detects at least 0.70 of bugs, uniform random sampling of 8 shapes detects at least 0.10 less than boundary-biased, a fixed regular single shape detects 0.0, and the zero-bug control flags 0.0.
+
+Metric: /detection/boundary_biased_rate_at_8_shapes in results/794-shape-detection.json.
+
+Expected: metric at or above 0.70; fixed regular detection 0.0; uniform random at least 0.10 below boundary-biased at 8 shapes.
+
+Falsifier: boundary-biased detection at 8 shapes below 0.70, or uniform random within 0.10 of boundary-biased at 8 shapes, or any detection by the fixed regular shape or in the zero-bug control.
+
+Run: cargo run --locked -q --release -- shape-sim --seed 7 --bugs-per-class 2000 --pool 256 --counts 1,2,4,8,16 --out results/794-shape-detection.json
